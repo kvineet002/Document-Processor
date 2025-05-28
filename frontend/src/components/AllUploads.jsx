@@ -9,6 +9,7 @@ function AllUploads() {
   const [question, setQuestion] = useState('');
   const [topK, setTopK] = useState(3);
   const [answer, setAnswer] = useState(null);
+  const [answerLoading, setAnswerLoading] = useState(false);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -25,7 +26,9 @@ function AllUploads() {
     fetchDocuments();
   }, []);
 
-  const openModal = (docId) => {
+  const [currentDocTitle,setCurrentDocTitle] = useState(null);
+  const openModal = (docId,docTitle) => {
+    setCurrentDocTitle(docTitle);
     setCurrentDocId(docId);
     setQuestion('');
     setTopK(3);
@@ -35,16 +38,21 @@ function AllUploads() {
 
   const handleSubmit = async () => {
     try {
+        setAnswerLoading(true);
       const response = await axios.post('http://localhost:8000/api/documents/ask/', {
         document_id: currentDocId,
         question,
         top_k: topK
       });
+        setAnswerLoading(false);
       setAnswer(response.data.answer);
     } catch (error) {
       console.error("Error asking question:", error);
       setAnswer("Error getting answer.");
     }
+    finally {
+        setAnswerLoading(false);
+        }
   };
 
   return (
@@ -86,7 +94,7 @@ function AllUploads() {
                   <td className="py-2 px-4 border">{new Date(doc.created_at).toLocaleString()}</td>
                   <td className="py-2 px-4 border">
                     <button
-                      onClick={() => openModal(doc.id)}
+                      onClick={() => openModal(doc.id,doc.title)}
                       className="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-2 rounded"
                     >
                       Ask Question
@@ -101,10 +109,11 @@ function AllUploads() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center border justify-center z-50">
+            <div className=' flex border '>
           <div className="bg-white p-6 rounded shadow-md w-96 relative">
             <h3 className="text-lg font-semibold mb-4">Ask a Question</h3>
-            <p className="text-sm text-gray-500 mb-2">Document ID: {currentDocId}</p>
+            <p className="text-sm text-gray-500 mb-2">Document Name: {currentDocTitle}</p>
 
             <label className="block mb-2 text-sm font-medium">Question:</label>
             <input
@@ -127,23 +136,32 @@ function AllUploads() {
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setShowModal(false)}
-                className="bg-gray-300 text-gray-700 px-3 py-1 rounded"
+                className="bg-gray-300 text-black font-bold px-3 py-1 rounded"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                disabled={!question.trim()}
+                className="bg-orange-500 text-white px-3 py-1 font-bold rounded hover:bg-orange-600"
               >
                 Submit
               </button>
             </div>
-
-            {answer && (
+            </div>
+            <div className=' flex flex-col items-center justify-center  w-96 bg-white p-6 rounded shadow-md'>
+            {answerLoading && ( 
+                <div className="mt-4 text-sm text-gray-500">Loading answer...</div>
+            )}
+            {answer&&!answerLoading && (
               <div className="mt-4 p-2 bg-green-100 text-green-800 rounded text-sm">
                 <strong>Answer:</strong> {answer}
               </div>
             )}
+            {!answer && !answerLoading && (
+              <div className="mt-4 text-sm text-gray-500">No answer yet.</div>
+            )}
+            </div>
           </div>
         </div>
       )}
